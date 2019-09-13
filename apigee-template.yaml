@@ -1,0 +1,122 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: apigee-template
+  annotations:
+    openshift.io/display-name: "Apigee"
+    description: >-
+      Apigee"
+objects:
+
+- kind: ConfigMap
+  apiVersion: v1
+  metadata:
+    name: apigee-license
+  data:
+    apigee-license.txt: 
+
+- kind: Service
+  apiVersion: v1
+  metadata:
+    name: apigee
+    labels:
+      app: apigee
+  spec:
+    ports:
+    - name: admin-http
+      protocol: TCP
+      port: 9000
+      targetPort: 9000
+    - name: api-http
+      protocol: TCP
+      port: 9001
+      targetPort: 9001
+    - name: management-http
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+    - name: developer-http
+      protocol: TCP
+      port: 8079
+      targetPort: 8079
+    - name: monitoring-http
+      protocol: TCP
+      port: 3000
+      targetPort: 3000
+    selector:
+      app: apigee
+    type: LoadBalancer
+    sessionAffinity: None
+
+
+- apiVersion: extensions/v1beta1
+  kind: Deployment
+  metadata:
+    name: apigee
+    labels:
+      app: apigee
+  spec:
+    replicas: 1
+    selector:
+      matchLabels:
+        app: apigee
+    template:
+      metadata:
+        labels:
+          app: apigee
+      spec:
+        volumes:
+        - name: empty-dir
+          emptyDir: {}
+        - name: apigee-data
+          emptyDir: {}
+        - name: apigee-customer
+          emptyDir: {}
+        - name: apigee-license
+          configMap:
+            name: apigee-license
+            items:
+            - key: apigee-license.txt
+              path: license.txt
+            defaultMode: 420
+        containers:
+        - name: apigee
+          image: docker.apigee.net/apigee-edge-aio:latest
+          ports:
+          - containerPort: 9000
+            name: admin-http
+          - containerPort: 8080
+            name: management-http
+          - containerPort: 9001
+            name: api-http
+          - containerPort: 3000
+            name: monitoring-http
+          - containerPort: 8079
+            name: developer-http
+          volumeMounts:
+          - name: apigee-data
+            mountPath: "/opt/apigee/data"
+          - name: apigee-customer
+            mountPath: "/opt/apigee/customer"
+          - name: apigee-license
+            mountPath: "/opt/apigee/license"
+          terminationMessagePath: "/dev/termination-log"
+          terminationMessagePolicy: File
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+        restartPolicy: Always
+        terminationGracePeriodSeconds: 30
+        securityContext:
+          fsGroup: 998
+        schedulerName: default-scheduler
+        serviceAccount: apigee-sa
+        serviceAccountName: apigee-sa
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxUnavailable: 25%
+        maxSurge: 25%
+    revisionHistoryLimit: 10
+    progressDeadlineSeconds: 600
+
