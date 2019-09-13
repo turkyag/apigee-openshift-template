@@ -93,6 +93,13 @@ objects:
             name: monitoring-http
           - containerPort: 8079
             name: developer-http
+          resources: 
+            limits:
+              memory: "6144Mi"
+              cpu: "2"
+            requests:
+              memory: "6144Mi"
+              cpu: "1"
           volumeMounts:
           - name: apigee-data
             mountPath: "/opt/apigee/data"
@@ -119,4 +126,3 @@ objects:
         maxSurge: 25%
     revisionHistoryLimit: 10
     progressDeadlineSeconds: 600
-
